@@ -20,9 +20,9 @@ import java.util.concurrent.TimeUnit;
  *
  * @author Martin
  */
-public class PlayVideoActiviy extends Activity {
+public class PlayVideoActivity extends Activity {
 
-    public static final String TAG = "PlayVideoActiviy";
+    public static final String TAG = "PlayVideoActivity";
 
     public static final String KEY_FILE_PATH = "file_path";
 
@@ -46,7 +46,7 @@ public class PlayVideoActiviy extends Activity {
         setContentView(R.layout.activity_play_video);
         mScalableVideoView = (ScalableVideoView) findViewById(R.id.video_view);
         try {
-            // 这个调用是为了初始化mediaplayer并让它能及时和surface绑定
+            // 这个调用是为了初始化mediaPlayer并让它能及时和surface绑定
             mScalableVideoView.setDataSource("");
         } catch (IOException e) {
             e.printStackTrace();

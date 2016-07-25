@@ -138,7 +138,7 @@ public class NewRecordVideoActivity extends Activity implements View.OnTouchList
             FileUtil.deleteFile(videoPath);
         } else {
             // 告诉宿主页面录制视频的路径
-            startActivity(new Intent(this, PlayVideoActiviy.class).putExtra(PlayVideoActiviy.KEY_FILE_PATH, videoPath));
+            startActivity(new Intent(this, PlayVideoActivity.class).putExtra(PlayVideoActivity.KEY_FILE_PATH, videoPath));
         }
     }
 
