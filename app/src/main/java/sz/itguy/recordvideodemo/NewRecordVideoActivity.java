@@ -7,6 +7,8 @@ import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewGroup;
+import android.widget.FrameLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -29,7 +31,7 @@ public class NewRecordVideoActivity extends Activity implements View.OnTouchList
     // 输出宽度
     private static final int OUTPUT_WIDTH = 320;
     // 输出高度
-    private static final int OUTPUT_HEIGHT = 240;
+    private static final int OUTPUT_HEIGHT = 320;
     // 宽高比
     private static final float RATIO = 1f * OUTPUT_WIDTH / OUTPUT_HEIGHT;
 
@@ -59,7 +61,7 @@ public class NewRecordVideoActivity extends Activity implements View.OnTouchList
         setContentView(R.layout.activity_new_recorder);
         CameraPreviewView preview = (CameraPreviewView) findViewById(R.id.camera_preview);
         preview.setCamera(mCamera, cameraId);
-
+//        preview.setLayoutParams(new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         mRecorder.setCameraPreviewView(preview);
 
         findViewById(R.id.button_start).setOnTouchListener(this);
