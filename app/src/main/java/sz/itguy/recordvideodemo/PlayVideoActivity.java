@@ -49,7 +49,7 @@ public class PlayVideoActivity extends Activity {
             // 这个调用是为了初始化mediaPlayer并让它能及时和surface绑定
             mScalableVideoView.setDataSource("");
         } catch (IOException e) {
-            e.printStackTrace();
+//            e.printStackTrace();
         }
 
         mPlayImageView = (ImageView) findViewById(R.id.playImageView);

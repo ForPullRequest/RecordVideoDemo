@@ -31,9 +31,9 @@ public class WXLikeVideoRecorder implements Camera.PreviewCallback, CameraPrevie
     private static final String TAG = "InstantVideoRecorder";
 
     // 最长录制时间6秒
-    private static final long MAX_RECORD_TIME = 6000;
+    private long MAX_RECORD_TIME = 6000;
     // 帧率
-    private static final int FRAME_RATE = 30;
+    private int FRAME_RATE = 120;
     // 声音采样率
     private static final int SAMPLE_AUDIO_RATE_IN_HZ = 44100;
 
@@ -75,12 +75,28 @@ public class WXLikeVideoRecorder implements Camera.PreviewCallback, CameraPrevie
     long[] timestamps;
     ShortBuffer[] samples;
     int imagesIndex, samplesIndex;
+    int recordNum;
     private Frame yuvImage = null;
 
     // 图片帧过滤器
     private FFmpegFrameFilter mFrameFilter;
     // 相机预览视图
     private CameraPreviewView mCameraPreviewView;
+
+    /**
+     * 获取当前录制了的秒数
+     *
+     * @return
+     */
+    public int getRecordNum() {
+        return recordNum;
+    }
+
+    public void setOnRecordProgressListener(OnRecordProgressListener onRecordProgressListener) {
+        this.onRecordProgressListener = onRecordProgressListener;
+    }
+
+    private OnRecordProgressListener onRecordProgressListener;
 
     /**
      * 帧数据处理配置
@@ -92,12 +108,25 @@ public class WXLikeVideoRecorder implements Camera.PreviewCallback, CameraPrevie
         mFolder = folder;
     }
 
+    public void setMaxRecordTime(long MAX_RECORD_TIME) {
+        this.MAX_RECORD_TIME = MAX_RECORD_TIME;
+    }
+
+    public void setFrameRate(int FRAME_RATE) {
+        this.FRAME_RATE = FRAME_RATE;
+    }
+
+    public long getTimeStamp() {
+        return recorder.getTimestamp();
+    }
+
     public boolean isRecording() {
         return recording;
     }
 
     /**
      * 设置图片帧的大小
+     *
      * @param width
      * @param height
      */
@@ -108,6 +137,7 @@ public class WXLikeVideoRecorder implements Camera.PreviewCallback, CameraPrevie
 
     /**
      * 设置输出视频大小
+     *
      * @param width
      * @param height
      */
@@ -118,6 +148,7 @@ public class WXLikeVideoRecorder implements Camera.PreviewCallback, CameraPrevie
 
     /**
      * 获取开始时间
+     *
      * @return
      */
     public long getStartTime() {
@@ -126,10 +157,27 @@ public class WXLikeVideoRecorder implements Camera.PreviewCallback, CameraPrevie
 
     /**
      * 获取停止时间
+     *
      * @return
      */
     public long getStopTime() {
         return stopTime;
+    }
+
+    public void preInitRecorder() {
+        Log.w(TAG, "init recorder");
+
+        RecorderParameters recorderParameters = RecorderParameters.getRecorderParameter(Constants.RESOLUTION_MEDIUM_VALUE);
+        strFinalPath = FileUtil.createFilePath(mFolder, null, Long.toString(System.currentTimeMillis()));
+//        recorder = new FFmpegFrameRecorder(strFinalPath, imageWidth, imageHeight, 1);
+        // 初始化时设置录像机的目标视频大小
+        recorder = new FFmpegFrameRecorder(strFinalPath, outputWidth, outputHeight, 1);
+        recorder.setFormat(recorderParameters.getVideoOutputFormat());
+        recorder.setSampleRate(SAMPLE_AUDIO_RATE_IN_HZ);
+        // Set in the surface changed method
+        recorder.setFrameRate(FRAME_RATE);
+
+        Log.i(TAG, "recorder initialize success");
     }
 
     //---------------------------------------
@@ -186,6 +234,7 @@ public class WXLikeVideoRecorder implements Camera.PreviewCallback, CameraPrevie
 
     /**
      * 设置帧图像数据处理参数
+     *
      * @param filters
      */
     public void setFilters(String filters) {
@@ -194,10 +243,11 @@ public class WXLikeVideoRecorder implements Camera.PreviewCallback, CameraPrevie
 
     /**
      * 生成处理配置
-     * @param w 裁切宽度
-     * @param h 裁切高度
-     * @param x 裁切起始x坐标
-     * @param y 裁切起始y坐标
+     *
+     * @param w         裁切宽度
+     * @param h         裁切高度
+     * @param x         裁切起始x坐标
+     * @param y         裁切起始y坐标
      * @param transpose 图像旋转参数
      * @return 帧图像数据处理参数
      */
@@ -232,6 +282,7 @@ public class WXLikeVideoRecorder implements Camera.PreviewCallback, CameraPrevie
 
     /**
      * 获取视频文件路径
+     *
      * @return
      */
     public String getFilePath() {
@@ -240,12 +291,34 @@ public class WXLikeVideoRecorder implements Camera.PreviewCallback, CameraPrevie
 
     /**
      * 开始录制
+     *
      * @return
      */
     public boolean startRecording() {
         boolean started = true;
         initRecorder();
         initFrameFilter();
+        /*//TODO I have init this when activity create preInitRecorder()
+//        initRecorder();
+//        initFrameFilter();
+        //below things from initRecorder()
+
+
+        if (RECORD_LENGTH > 0) {
+            imagesIndex = 0;
+            images = new Frame[RECORD_LENGTH * FRAME_RATE];
+            timestamps = new long[images.length];
+            for (int i = 0; i < images.length; i++) {
+                images[i] = new Frame(imageWidth, imageHeight, Frame.DEPTH_UBYTE, 2);
+                timestamps[i] = -1;
+            }
+        } else if (yuvImage == null) {
+            yuvImage = new Frame(imageWidth, imageHeight, Frame.DEPTH_UBYTE, 2);
+            Log.i(TAG, "create yuvImage");
+        }
+        audioRecordRunnable = new AudioRecordRunnable();
+        audioThread = new Thread(audioRecordRunnable);
+        runAudioThread = true;*/
         try {
             recorder.start();
             mFrameFilter.start();
@@ -277,7 +350,7 @@ public class WXLikeVideoRecorder implements Camera.PreviewCallback, CameraPrevie
 
         if (recorder != null && recording) {
             if (RECORD_LENGTH > 0) {
-                Log.v(TAG,"Writing frames");
+                Log.v(TAG, "Writing frames");
                 try {
                     int firstIndex = imagesIndex % samples.length;
                     int lastIndex = (imagesIndex - 1) % images.length;
@@ -314,13 +387,13 @@ public class WXLikeVideoRecorder implements Camera.PreviewCallback, CameraPrevie
                         recorder.recordSamples(samples[i % samples.length]);
                     }
                 } catch (Exception e) {
-                    Log.v(TAG,e.getMessage());
+                    Log.v(TAG, e.getMessage());
                     e.printStackTrace();
                 }
             }
 
             recording = false;
-            Log.v(TAG,"Finishing recording, calling stop and release on recorder");
+            Log.v(TAG, "Finishing recording, calling stop and release on recorder");
             try {
                 recorder.stop();
                 recorder.release();
@@ -362,6 +435,8 @@ public class WXLikeVideoRecorder implements Camera.PreviewCallback, CameraPrevie
                         long t = 1000 * pastTime;
                         if (t > recorder.getTimestamp()) {
                             recorder.setTimestamp(t);
+                            recordNum = (int) (pastTime / 1000.0);
+                            onRecordProgressListener.onRecordProgress(recordNum);
                         }
                         recordFrame(yuvImage);
                     } catch (Exception e) {
@@ -376,6 +451,7 @@ public class WXLikeVideoRecorder implements Camera.PreviewCallback, CameraPrevie
 
     /**
      * 录制帧
+     *
      * @throws FrameRecorder.Exception
      */
     private void recordFrame(Frame frame) throws FrameRecorder.Exception, FrameFilter.Exception {
@@ -388,6 +464,7 @@ public class WXLikeVideoRecorder implements Camera.PreviewCallback, CameraPrevie
 
     /**
      * 设置相机预览视图
+     *
      * @param cameraPreviewView
      */
     public void setCameraPreviewView(CameraPreviewView cameraPreviewView) {
@@ -462,7 +539,7 @@ public class WXLikeVideoRecorder implements Camera.PreviewCallback, CameraPrevie
                 bufferReadResult = audioRecord.read(audioData.array(), 0, audioData.capacity());
                 audioData.limit(bufferReadResult);
                 if (bufferReadResult > 0) {
-                    Log.v(TAG,"bufferReadResult: " + bufferReadResult);
+                    Log.v(TAG, "bufferReadResult: " + bufferReadResult);
                     // If "recording" isn't true when start this thread, it never get's set according to this if statement...!!!
                     // Why?  Good question...
                     if (recording) {
@@ -470,20 +547,20 @@ public class WXLikeVideoRecorder implements Camera.PreviewCallback, CameraPrevie
                             recorder.recordSamples(audioData);
                             //Log.v(LOG_TAG,"recording " + 1024*i + " to " + 1024*i+1024);
                         } catch (FFmpegFrameRecorder.Exception e) {
-                            Log.v(TAG,e.getMessage());
+                            Log.v(TAG, e.getMessage());
                             e.printStackTrace();
                         }
                     }
                 }
             }
-            Log.v(TAG,"AudioThread Finished, release audioRecord");
+            Log.v(TAG, "AudioThread Finished, release audioRecord");
 
             /* encoding finish, release recorder */
             if (audioRecord != null) {
                 audioRecord.stop();
                 audioRecord.release();
                 audioRecord = null;
-                Log.v(TAG,"audioRecord released");
+                Log.v(TAG, "audioRecord released");
             }
         }
     }
@@ -500,6 +577,10 @@ public class WXLikeVideoRecorder implements Camera.PreviewCallback, CameraPrevie
          */
         void onRecordComplete();
 
+    }
+
+    public interface OnRecordProgressListener {
+        void onRecordProgress(int timestamp);
     }
 
 }
